@@ -18,7 +18,7 @@ public class OrderTrackerBackgroundService(
                 {
                     foreach (var trackingNumber in trackingNumbers)
                     {
-                        await hubContext.GetStatusHistoryAsync(clientId, name, trackingNumber, stoppingToken);
+                        await Scrappers.GetStatusHistoryAsync(hubContext, clientId, trackingNumber, stoppingToken);
                     }
                 }
             }
@@ -27,7 +27,7 @@ public class OrderTrackerBackgroundService(
                 AppLogger.Error($"Error en el servicio en segundo plano: {ex.Message}");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(7), stoppingToken);
         }
     }
 }

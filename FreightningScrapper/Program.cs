@@ -1,19 +1,15 @@
-﻿using System.Threading.Channels;
-using System.Runtime.CompilerServices;
-using Microsoft.Data.Sqlite;
-using FreightningScrapper;
+﻿using FreightningScrapper;
 ;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar servicios
-builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
-
-builder.Services.AddSingleton(_ => new SqliteConnection("Data Source=tracking.db"));
-builder.Services.AddSingleton<ITrackingRepository, TrackingRepository>();
-builder.Services.AddSingleton<OrderTrackerHub>();
-builder.Services.AddHostedService<OrderTrackerBackgroundService>();
+builder.Services
+    // .AddSingleton(_ => new SqliteConnection("Data Source=tracking.db"))
+    // .AddSingleton<ITrackingRepository, TrackingRepository>()
+    .AddSingleton<OrderTrackerHub>();
+//builder.Services.AddHostedService(s => new OrderTrackerBackgroundService(s.GetRequiredService<ITrackingRepository>(), s.GetRequiredService<OrderTrackerHub>()));
 
 
 
@@ -29,6 +25,6 @@ app.UseStaticFiles();
 app.MapHub<OrderTrackerHub>("/ordertracker");
 
 // Initialize the database
-await app.Services.GetRequiredService<ITrackingRepository>().InitializeDatabaseAsync();
+// await app.Services.GetRequiredService<ITrackingRepository>().InitializeDatabaseAsync();
 
 app.Run();
