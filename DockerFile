@@ -44,6 +44,18 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=build /app/out ./
 
+# Install PowerShell# Download and register the Microsoft repository GPG keys
+RUN wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+RUN dpkg -i packages-microsoft-prod.deb
+
+# Update the package lists and install PowerShell
+RUN apt-get update
+RUN apt-get install -y powershell
+
+# Execute Playwright setup script (assuming playwright.ps1 is in /app)
+RUN pwsh -Command "& {./playwright.ps1 install; exit $LASTEXITCODE}"
+
+
 # Configure web app to listen on port 80
 ENV ASPNETCORE_URLS=http://+:80
 EXPOSE 80
