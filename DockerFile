@@ -16,13 +16,6 @@ RUN dotnet publish -c Release -o /app/out
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 
-# Install lsb-release first (needed for PowerShell installation)
-RUN apt-get update && apt-get install -y \
-    lsb-release \
-    wget \
-    gnupg \
-    ca-certificates
-
 # Playwright dependencies (headless Chromium needs these!)
 RUN apt-get update && apt-get install -y \
     libnss3 \
@@ -45,22 +38,23 @@ RUN apt-get update && apt-get install -y \
     libharfbuzz0b \
     libfontconfig1 \
     fonts-liberation \
+    wget \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/out ./
 
-# Install PowerShell - now with lsb-release available
-RUN wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+# Install PowerShell# Download and register the Microsoft repository GPG keys
+RUN wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 RUN dpkg -i packages-microsoft-prod.deb
+
+# Update the package lists and install PowerShell
 RUN apt-get update
 RUN apt-get install -y powershell
 
-# Create playwright setup script
-RUN echo 'npm init playwright@latest -y' > /app/playwright.ps1
-RUN chmod +x /app/playwright.ps1
+# Execute Playwright setup script (assuming playwright.ps1 is in /app)
+RUN pwsh -Command "& {./playwright.ps1 install; exit $LASTEXITCODE}"
 
-# Execute Playwright setup script
-RUN pwsh -Command "& {/app/playwright.ps1 install; exit \$LASTEXITCODE}"
 
 # Configure web app to listen on port 80
 ENV ASPNETCORE_URLS=http://+:80
