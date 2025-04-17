@@ -12,21 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.4" />
     <PackageReference Include="Microsoft.Playwright" Version="1.51.0" />
   </ItemGroup>
-
-  <Target Name="CheckPlaywright" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-    <Exec Command="dotnet tool list --global" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="ToolList" />
-    </Exec>
-    <PropertyGroup>
-      <PlaywrightInstalled>$(ToolList.Contains('playwright'))</PlaywrightInstalled>
-    </PropertyGroup>
-    <Exec Command="dotnet tool install --global Microsoft.Playwright.CLI" Condition="!$(PlaywrightInstalled)" />
-    <Exec Command="playwright install" Condition="!Exists('$(MSBuildProjectDirectory)/.playwright')" />
-  </Target>
 
 </Project>
