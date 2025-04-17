@@ -18,7 +18,7 @@
     <PackageReference Include="Microsoft.Playwright" Version="1.51.0" />
   </ItemGroup>
 
-  <Target Name="CheckPlaywright" BeforeTargets="Build">
+  <Target Name="CheckPlaywright" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug'">
     <Exec Command="dotnet tool list --global" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="ToolList" />
     </Exec>
