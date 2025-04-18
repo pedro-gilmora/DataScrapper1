@@ -1,4 +1,4 @@
-import { HubConnectionBuilder } from "./signalr/browser-index.js"
+import { HubConnectionBuilder } from "./signalr.min.js"
 
 const emptyList = `<div class="empty-list text-gray-500 py-6 text-center">No data to show. Please, add some tracking numbers</div>`;
 
@@ -129,6 +129,8 @@ connection.start().then(async () => {
 
 let requestedFirst = false;
 
+const TIMEOUT = 5 * 60 * 1000;
+
 async function requestUpdates(clientName, trackingNumbers) {
 
     if (!trackingNumbers.length) {
@@ -160,7 +162,7 @@ async function requestUpdates(clientName, trackingNumbers) {
 
     while (!signal.aborted) {
         connection.invoke('UpdateConnectionIdAsync', clientName, trackingNumbers).then();
-        await delay(30000, signal);
+        await delay(TIMEOUT, signal);
     }
 }
 
