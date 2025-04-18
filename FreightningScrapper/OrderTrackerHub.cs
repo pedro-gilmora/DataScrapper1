@@ -1,104 +1,59 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Playwright;
+
+using ScrapperApi;
+
+using System.Collections.Concurrent;
 
 namespace FreightningScrapper;
 
-public class OrderTrackerHub(/*ITrackingRepository trackingRepository*/) : Hub
+public class OrderTrackerHub(OrderTrackerService trackerService) : Hub
 {
     readonly ConcurrentDictionary<string, CancellationTokenSource> cancelByClients = [];
 
-    // public async Task RegisterTrackingNumberAsync(string clientName, string[] trackingNumbers)
-    // {
-    //     if (string.IsNullOrWhiteSpace(clientName) || trackingNumbers.Length == 0)
-    //     {
-    //         throw new ArgumentException("Client name and tracking number cannot be null or empty.");
-    //     }
-
-    //     await trackingRepository.AddTrackingNumbersAsync(Context.ConnectionId, trackingNumbers);
-
-    //     await UpdateConnectionIdAsync(Context.ConnectionId);
-
-    //     AppLogger.Info($"Client {clientName} ({Context.ConnectionId}) is watching tracking number: {trackingNumbers}");
-    // }
-
-    public async Task UpdateConnectionIdAsync(string clientName, string[] trackingNumbers)
+    ~OrderTrackerHub()
     {
-        try
+        var cancelByClientsKey = cancelByClients.Keys.ToArray().AsSpan();
+
+        foreach (var clientId in cancelByClientsKey)
         {
-            if (string.IsNullOrWhiteSpace(clientName))
+            if (cancelByClients.TryRemove(clientId, out var cancellor))
             {
-                throw new ArgumentException("Client name cannot be null or empty.");
-            }
-
-            if (trackingNumbers.Length == 0)
-            {
-                AppLogger.Warn("No tracking numbers found for any clients.");
-                return;
-            }
-
-            string connectionId = Context.ConnectionId;
-
-            try
-            {
-                if (cancelByClients.TryRemove(clientName, out var cts))
-                {
-                    cts.Cancel();
-                }
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error($"Error removing client {clientName}: {ex.Message}");
-            }
-
-            AppLogger.Info("Launching browser...");
-
-            using var playwright = await Playwright.CreateAsync();
-
-            await using var browser = await playwright.Chromium.LaunchAsync(new()
-            {
-                Timeout = 60000,
-                Headless = true
-            });
-
-            var context = await browser.NewContextAsync(new() { JavaScriptEnabled = true });
-            var page = await context.NewPageAsync();
-
-            try
-            {
-                CancellationTokenSource cancellator = CancellationTokenSource.CreateLinkedTokenSource(Context.ConnectionAborted);
-
-                cancelByClients.TryAdd(clientName, cancellator);
                 try
                 {
-                    foreach (var trackingNumber in trackingNumbers)
-                    {
-                        AppLogger.Info($"Tracking number: {trackingNumber}");
-
-                        var history = await Scrappers.GetMinimaxStatusHistoryAsync(page, trackingNumber);
-
-                        if (history.Count > 0)
-                        {
-                            await Clients.Client(Context.ConnectionId).SendAsync("Update", new { trackingNumber, history }, cancellator.Token);
-                            AppLogger.Success($"{history.Count} updates were sent to {clientName} (with connection: {Context.ConnectionId})");
-                        }
-                    }
+                    cancellor.Cancel();
                 }
                 catch (Exception ex)
                 {
-                    AppLogger.Error($"Updates error: {ex.Message}");
+                    AppLogger.Error($"Error removing client {clientId}): {ex.Message}");
                 }
             }
-            finally
+        }
+    }
+
+    public Task UpdateConnectionIdAsync(string clientName, string[] trackingNumbers)
+    {
+        var connectionId = Context.ConnectionId;
+        try
+        {
+            if (cancelByClients.TryRemove(connectionId, out var cts))
             {
-                await page.CloseAsync();
-                await context.CloseAsync();
-                await browser.CloseAsync();
+                cts.Cancel();
             }
+
+            CancellationTokenSource cancellator = CancellationTokenSource.CreateLinkedTokenSource(Context.ConnectionAborted);
+
+            cancelByClients.TryAdd(clientName, cancellator);
+
+            return trackerService.UpdateConnectionIdAsync(
+                clientName,
+                trackingNumbers,
+                (trackingNumber, history) => Clients.Client(connectionId).SendAsync("Update", new { trackingNumber, history }, cancellator.Token),
+                cancellator.Token);
         }
         catch (Exception ex)
         {
-            AppLogger.Error($"Error retrieving status history: {ex.Message}");
+            AppLogger.Error($"Error removing client {clientName} ({connectionId}): {ex.Message}");
+            return Task.CompletedTask;
         }
     }
 }

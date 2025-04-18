@@ -1,4 +1,6 @@
 ﻿using FreightningScrapper;
+
+using ScrapperApi;
 ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +10,7 @@ builder.Services.AddSignalR();
 builder.Services
     // .AddSingleton(_ => new SqliteConnection("Data Source=tracking.db"))
     // .AddSingleton<ITrackingRepository, TrackingRepository>()
+    .AddSingleton<OrderTrackerService>()
     .AddSingleton<OrderTrackerHub>();
 //builder.Services.AddHostedService(s => new OrderTrackerBackgroundService(s.GetRequiredService<ITrackingRepository>(), s.GetRequiredService<OrderTrackerHub>()));
 
